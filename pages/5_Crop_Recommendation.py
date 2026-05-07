@@ -1,5 +1,6 @@
 """
-Crop Recommendation Page - Intelligent crop recommendations
+Crop Recommendation Page - Hybrid Intelligence (Rule-based + ML)
+Combines traditional recommendation engine with ML predictions
 """
 
 import streamlit as st
@@ -12,24 +13,151 @@ from utils.recommendation import (
     recommend_crops, get_crop_details, get_suitability_score,
     climate_classification, get_all_crops
 )
+from utils.model_loader import (
+    load_ml_model, check_model_availability, display_prediction_result,
+    display_feature_importance, display_confidence_distribution, get_model_status
+)
+from utils.ml_predictor import get_crop_info, get_suitability_message
 
 st.set_page_config(page_title="Crop Recommendation", page_icon="🌾", layout="wide")
 
 # Load custom CSS
-with open("assets/styles/custom.css", "r") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+try:
+    with open("assets/styles/custom.css", "r") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    pass
 
 # Header
 st.markdown("""
     <div style='background: linear-gradient(135deg, #27ae60 0%, #1e5631 100%); 
                 padding: 30px; border-radius: 15px; margin-bottom: 30px;'>
         <h1 style='color: white; margin: 0;'>🌾 Smart Crop Recommendation System</h1>
-        <p style='color: #d5f4e6; margin: 10px 0 0 0;'>Get personalized crop recommendations based on climate and season</p>
+        <p style='color: #d5f4e6; margin: 10px 0 0 0;'>Hybrid Intelligence: Traditional + Machine Learning Recommendations</p>
     </div>
 """, unsafe_allow_html=True)
 
-# Input Section
-st.markdown("### 📊 Enter Your Agricultural Parameters")
+# Create tabs for different recommendation methods
+tab1, tab2, tab3 = st.tabs(["🤖 AI Prediction (ML)", "📊 Rule-Based Recommendation", "📈 Model Analytics"])
+
+# ============================================================================
+# TAB 1: ML-BASED PREDICTION
+# ============================================================================
+with tab1:
+    st.markdown("### 🤖 Machine Learning Crop Prediction")
+    
+    # Check model availability
+    model_status = get_model_status()
+    
+    if not model_status['available']:
+        st.warning("⚠️ ML Model Not Trained")
+        st.info("""
+        The ML model needs to be trained first. Run the following command:
+        ```bash
+        python models/train_model.py
+        ```
+        Then refresh this page.
+        """)
+    else:
+        # Load ML model
+        ml_predictor = load_ml_model()
+        
+        if ml_predictor:
+            st.success("✅ ML Model Loaded Successfully")
+            
+            # ML Input Section
+            st.markdown("#### 📊 Enter Agricultural Parameters for ML Prediction")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                ml_temperature = st.slider(
+                    "🌡️ Temperature (°C)",
+                    min_value=0.0,
+                    max_value=40.0,
+                    value=25.0,
+                    step=0.1,
+                    key="ml_temp"
+                )
+                
+                ml_humidity = st.slider(
+                    "💧 Humidity (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=65.0,
+                    step=1.0,
+                    key="ml_humidity"
+                )
+            
+            with col2:
+                ml_rainfall = st.slider(
+                    "🌧️ Rainfall (mm)",
+                    min_value=0.0,
+                    max_value=400.0,
+                    value=150.0,
+                    step=5.0,
+                    key="ml_rainfall"
+                )
+                
+                ml_nitrogen = st.slider(
+                    "🧪 Nitrogen (N)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=50.0,
+                    step=1.0,
+                    key="ml_nitrogen"
+                )
+            
+            with col3:
+                ml_phosphorus = st.slider(
+                    "🧪 Phosphorus (P)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=30.0,
+                    step=1.0,
+                    key="ml_phosphorus"
+                )
+                
+                ml_potassium = st.slider(
+                    "🧪 Potassium (K)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    value=40.0,
+                    step=1.0,
+                    key="ml_potassium"
+                )
+            
+            # Make prediction
+            if st.button("🚀 Get ML Prediction", key="ml_predict"):
+                with st.spinner("🔄 Analyzing data with ML model..."):
+                    prediction = ml_predictor.predict(
+                        ml_temperature,
+                        ml_humidity,
+                        ml_rainfall,
+                        ml_nitrogen,
+                        ml_phosphorus,
+                        ml_potassium
+                    )
+                    
+                    if prediction['success']:
+                        # Display prediction result
+                        display_prediction_result(prediction, show_details=True)
+                        
+                        # Store prediction in session state for later use
+                        st.session_state.last_ml_prediction = prediction
+                    else:
+                        st.error(f"❌ Prediction Error: {prediction.get('message')}")
+
+# ============================================================================
+# TAB 2: RULE-BASED RECOMMENDATION
+# ============================================================================
+with tab2:
+    st.markdown("### 📊 Traditional Rule-Based Recommendation")
+
+    # Input Section
+    st.markdown("#### 📊 Enter Your Agricultural Parameters")
+
+    col1, col2 = st.columns(2)
 
 col1, col2 = st.columns(2)
 
